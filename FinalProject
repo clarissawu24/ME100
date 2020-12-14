@@ -1,0 +1,85 @@
+////////// PROJECT DESCRIPTION //////////
+// This project utilizes an ultrasonic sensor to help detect if a customer is near
+// the entrance or door of a store. If the sensor detects a customer approaching, a text 
+// will be sent to employees in the store to prepare to help the customer via the Blynk App.
+// There will also be a light indicating whether or not the customer may step in 
+// red for not yet, green for come on in. These are controlled via a virtual button on the Blynk App
+// These are just useful precautions for COVID-19 as employees need to sanitize products
+// and the store after every customer. 
+
+////////// NEOPIXEL LIBRARY SETUP //////////
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+#endif
+#define PIN        15
+#define NUMPIXELS  8
+int BUTTONState = 0;
+
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+#define DELAYVAL 3
+////////// ULTRA SETUP ///00
+///////
+#include "Arduino.h"
+#include "NewPing.h"
+#define TRIGGER_PIN  22  // trigger pin on the ultrasonic sensor
+#define ECHO_PIN     23  // echo pin on the ultrasonic sensor
+#define MAX_DISTANCE 300 // Maximum distance we want to ping for (in centimeters)
+
+// object initialization
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup
+
+ ////////// BLYNK SETUP TO TEXT PHONE //////////
+#define BLYNK_PRINT Serial
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+
+//Auth Token in the Blynk App.
+char auth[] = "g9w87WFmrN6KixBB5SfJ6oDR06PsHhPc";
+
+// WiFi setup
+char ssid[] = "notsonic";
+char pass[] = "byebyesonic";
+
+void setup()
+{
+  Serial.begin(9600);
+  Blynk.begin(auth, ssid, pass);
+
+  pinMode(PIN, INPUT); //set up pin for LED to Blynk app
+  pixels.begin(); // initialize LED Strip
+}
+
+BLYNK_WRITE(V0){ //set up virtual button on Blynk app
+  int pinValue = param.asInt();
+    if (pinValue == 0) { // if button is OFF = 0, light is red
+      for (int i = 0; i < NUMPIXELS; i++) {
+
+      pixels.setPixelColor(i, pixels.Color(255, 0,0));
+      pixels.show();
+      delay(DELAYVAL);
+    }
+    
+    }
+  if (pinValue == 1) { // if button is ON = 1, light is green
+      for (int i = 0; i < NUMPIXELS; i++) {
+
+      pixels.setPixelColor(i, pixels.Color(0, 255,0));
+      pixels.show();
+      delay(DELAYVAL);
+    }
+    }
+}
+void loop()
+{
+  Blynk.run();
+  int distance = sonar.convert_cm(sonar.ping_median(10)); // read distance from ultrasonic sensor (using median of 10 iterations)
+  if (distance < 10){
+    Blynk.notify("A customer is here!");
+  }
+
+ // display in serial monitor:
+  Serial.print("Dist.: ");
+  Serial.println(distance);
+}
+  
